@@ -1,0 +1,36 @@
+name: CI/CD Platform
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout central repo
+      uses: actions/checkout@v3
+
+    - name: Trigger microservices CI
+      uses: peter-evans/repository-dispatch@v2
+      with:
+        token: ${{ secrets.REPO_ACCESS_TOKEN }}
+        repository: ${{ github.repository_owner }}/PayeTonKawa-Customers
+        event-type: ci-trigger
+
+    - name: Trigger API Products
+      uses: peter-evans/repository-dispatch@v2
+      with:
+        token: ${{ secrets.REPO_ACCESS_TOKEN }}
+        repository: ${{ github.repository_owner }}/PayeTonKawa-Products
+        event-type: ci-trigger
+
+    - name: Trigger API Orders
+      uses: peter-evans/repository-dispatch@v2
+      with:
+        token: ${{ secrets.REPO_ACCESS_TOKEN }}
+        repository: ${{ github.repository_owner }}/PayeTonKawa-Orders
+        event-type: ci-trigger 

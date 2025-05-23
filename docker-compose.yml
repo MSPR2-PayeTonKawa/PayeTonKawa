@@ -1,0 +1,110 @@
+services:
+  ####################
+  # MICRO - customers  #
+  ####################
+  api-customers:
+    build: ../PayeTonKawa-Customers
+    container_name: PTK-api-customers
+    ports:
+      - "8001:80"
+    volumes:
+      - ../PayeTonKawa-Customers:/var/www/html
+    depends_on:
+      - db-customers
+      - rabbitmq
+    networks:
+      - ptk-net
+
+  db-customers:
+    image: mysql:8
+    container_name: PTK-db-customers
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: customers
+    volumes:
+      - db_customers_data:/var/lib/mysql
+    networks:
+      - ptk-net
+
+  ####################
+  # MICRO - PRODUCTS #
+  ####################
+  api-products:
+    build: ../PayeTonKawa-Products
+    container_name: PTK-api-products
+    ports:
+      - "8002:80"
+    volumes:
+      - ../PayeTonKawa-Products:/var/www/html
+    depends_on:
+      - db-products
+      - rabbitmq
+    networks:
+      - ptk-net
+
+  db-products:
+    image: mysql:8
+    container_name: PTK-db-products
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: products
+    volumes:
+      - db_products_data:/var/lib/mysql
+    networks:
+      - ptk-net
+
+  ####################
+  # MICRO - ORDERS   #
+  ####################
+  api-orders:
+    build: ../PayeTonKawa-Orders
+    container_name: PTK-api-orders
+    ports:
+      - "8003:80"
+    volumes:
+      - ../PayeTonKawa-Orders:/var/www/html
+    depends_on:
+      - db-orders
+      - rabbitmq
+    networks:
+      - ptk-net
+
+  db-orders:
+    image: mysql:8
+    container_name: PTK-db-orders
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: orders
+    volumes:
+      - db_orders_data:/var/lib/mysql
+    networks:
+      - ptk-net
+
+  ####################
+  # MESSAGE BROKER   #
+  ####################
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: PTK-MessageBroker
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: user
+      RABBITMQ_DEFAULT_PASS: pass
+    networks:
+      - ptk-net
+
+########################
+# VOLUMES & NETWORKS   #
+########################
+volumes:
+  db_customers_data:
+  db_products_data:
+  db_orders_data:
+
+networks:
+  ptk-net:
