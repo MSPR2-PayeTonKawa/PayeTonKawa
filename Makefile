@@ -25,9 +25,9 @@ migrate:
 	docker exec PTK-api-orders php artisan migrate
 
 migrate-fresh:
-	docker exec PTK-api-customers php artisan migrate:fresh
-	docker exec PTK-api-products php artisan migrate:fresh
-	docker exec PTK-api-orders php artisan migrate:fresh
+	docker exec PTK-api-customers php artisan migrate:fresh --seed
+	docker exec PTK-api-products php artisan migrate:fresh --seed
+	docker exec PTK-api-orders php artisan migrate:fresh --seed
 
 seed:
 	docker exec PTK-api-customers php artisan db:seed
