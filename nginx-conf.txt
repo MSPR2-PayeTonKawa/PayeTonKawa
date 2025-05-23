@@ -1,8 +1,7 @@
-# Configuration pour le site principal avec les APIs en chemins
 server {
     server_name payetonkawa.ptitlu.dev;
 
-    # API Customers (racine)
+    # Front-end principal
     location / {
         proxy_pass http://localhost:8001;
         proxy_set_header Host $host;
@@ -11,9 +10,18 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 
+    # API Customers
+    location /customers/ {
+        proxy_pass http://localhost:8001/customers/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
     # API Products
-    location /api/products {
-        proxy_pass http://localhost:8002/api/products;
+    location /products/ {
+        proxy_pass http://localhost:8002/products/;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -21,8 +29,8 @@ server {
     }
 
     # API Orders
-    location /api/orders {
-        proxy_pass http://localhost:8003/api/orders;
+    location /orders/ {
+        proxy_pass http://localhost:8003/orders/;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -41,4 +49,4 @@ server {
     listen 80;
     server_name payetonkawa.ptitlu.dev;
     return 301 https://$host$request_uri;
-} 
+}
