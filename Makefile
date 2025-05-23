@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-.PHONY: up down restart build ps logs migrate migrate-fresh seed install update swagger clean help proxy-logs
+.PHONY: up down restart build ps logs migrate migrate-fresh seed install update swagger clean help
 
 up:
 	docker compose up -d
@@ -77,9 +77,6 @@ cache-clear:
 	docker exec PTK-api-products php artisan route:clear
 	docker exec PTK-api-orders php artisan route:clear
 
-proxy-logs:
-	docker logs PTK-nginx-proxy -f
-
 help:
 	@echo "Available commands:"
 	@echo "  make up               - Start all containers"
@@ -88,7 +85,6 @@ help:
 	@echo "  make build            - Rebuild all containers"
 	@echo "  make ps               - Show container status"
 	@echo "  make logs             - Show container logs"
-	@echo "  make proxy-logs       - Show Nginx proxy logs"
 	@echo "  make migrate          - Run migrations for all services"
 	@echo "  make migrate-fresh    - Drop all tables and re-run migrations"
 	@echo "  make seed             - Run seeders for all services"
