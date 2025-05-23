@@ -15,7 +15,7 @@ services:
     networks:
       - ptk-net
 
-  db-customers:
+  db-customers: 
     image: mysql:8
     container_name: PTK-db-customers
     restart: always
