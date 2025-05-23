@@ -1,0 +1,44 @@
+# Configuration pour le site principal avec les APIs en chemins
+server {
+    server_name payetonkawa.ptitlu.dev;
+
+    # API Customers (racine)
+    location / {
+        proxy_pass http://localhost:8001;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # API Products
+    location /api/products {
+        proxy_pass http://localhost:8002/api/products;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # API Orders
+    location /api/orders {
+        proxy_pass http://localhost:8003/api/orders;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    listen 443 ssl;
+    ssl_certificate /etc/letsencrypt/live/payetonkawa.ptitlu.dev/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/payetonkawa.ptitlu.dev/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+}
+
+# Redirection HTTP vers HTTPS pour le site principal
+server {
+    listen 80;
+    server_name payetonkawa.ptitlu.dev;
+    return 301 https://$host$request_uri;
+} 
