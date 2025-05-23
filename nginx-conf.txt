@@ -1,7 +1,6 @@
 server {
     server_name payetonkawa.ptitlu.dev;
 
-    # Front-end principal
     location / {
         proxy_pass http://localhost:8001;
         proxy_set_header Host $host;
@@ -10,7 +9,6 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 
-    # API Customers
     location /customers/ {
         proxy_pass http://localhost:8001/customers/;
         proxy_set_header Host $host;
@@ -19,7 +17,6 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 
-    # API Products
     location /products/ {
         proxy_pass http://localhost:8002/products/;
         proxy_set_header Host $host;
@@ -28,7 +25,6 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 
-    # API Orders
     location /orders/ {
         proxy_pass http://localhost:8003/orders/;
         proxy_set_header Host $host;
@@ -44,7 +40,6 @@ server {
     ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
 }
 
-# Redirection HTTP vers HTTPS pour le site principal
 server {
     listen 80;
     server_name payetonkawa.ptitlu.dev;
