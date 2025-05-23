@@ -29,7 +29,7 @@ Each microservice has its own repository, database, and API, following best prac
 
 ```bash
 # Clone the central repository
-git clone https://github.com/MSPR2-PayeTonKawa/PayeTonKawa.git
+git clone -b dev https://github.com/MSPR2-PayeTonKawa/PayeTonKawa.git
 
 # Clone the microservice repositories
 git clone -b dev https://github.com/MSPR2-PayeTonKawa/PayeTonKawa-Customers.git
