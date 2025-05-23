@@ -83,6 +83,24 @@ docker exec PTK-api-orders php artisan migrate
 
 ## Development Workflow
 
+### Using the Makefile
+
+A Makefile is provided with useful commands to manage the platform:
+
+```bash
+# Start all containers
+make up
+
+# Run migrations for all services
+make migrate
+
+# Stop all containers
+make down
+
+# See all available commands
+make help
+```
+
 ### Making Changes
 
 Since the code is mounted as volumes, any changes you make to the source code in each repository will be immediately reflected in the running containers.
