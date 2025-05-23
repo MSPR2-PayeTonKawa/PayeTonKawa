@@ -29,7 +29,8 @@ jobs:
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         script: |
           cd /home/debian/payetonkawa/PayeTonKawa
-          git pull origin main
+          git fetch --all
+          git reset --hard origin/main
           
           # Configuration Nginx
           if [ -f nginx-conf-fixed.txt ]; then
