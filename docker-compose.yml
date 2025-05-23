@@ -1,12 +1,27 @@
 services:
   ####################
+  # NGINX PROXY      #
+  ####################
+  nginx-proxy:
+    image: nginx:alpine
+    container_name: PTK-nginx-proxy
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d
+    depends_on:
+      - api-customers
+      - api-products
+      - api-orders
+    networks:
+      - ptk-net
+
+  ####################
   # MICRO - customers  #
   ####################
   api-customers:
     build: ../PayeTonKawa-Customers
     container_name: PTK-api-customers
-    ports:
-      - "8001:80"
     volumes:
       - ../PayeTonKawa-Customers:/var/www/html
     depends_on:
@@ -33,8 +48,6 @@ services:
   api-products:
     build: ../PayeTonKawa-Products
     container_name: PTK-api-products
-    ports:
-      - "8002:80"
     volumes:
       - ../PayeTonKawa-Products:/var/www/html
     depends_on:
@@ -61,8 +74,6 @@ services:
   api-orders:
     build: ../PayeTonKawa-Orders
     container_name: PTK-api-orders
-    ports:
-      - "8003:80"
     volumes:
       - ../PayeTonKawa-Orders:/var/www/html
     depends_on:

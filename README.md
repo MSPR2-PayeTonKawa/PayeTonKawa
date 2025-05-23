@@ -76,6 +76,29 @@ docker exec PTK-api-orders php artisan migrate
 
 ## Accessing the Services
 
+### Via Nginx Proxy (Recommended)
+
+All services are accessible through a single port (80) via the Nginx proxy:
+
+- **API Endpoints**:
+  - Customers API: http://localhost/api/customers
+  - Products API: http://localhost/api/products
+  - Orders API: http://localhost/api/orders
+
+- **Documentation**:
+  - Customers API Docs: http://localhost/docs/customers
+  - Products API Docs: http://localhost/docs/products
+  - Orders API Docs: http://localhost/docs/orders
+
+- **Web Interfaces**:
+  - Customers UI: http://localhost/customers
+  - Products UI: http://localhost/products
+  - Orders UI: http://localhost/orders
+
+### Direct Access (Development)
+
+You can also access each service directly (useful for development):
+
 - **Customer API**: http://localhost:8001
 - **Product API**: http://localhost:8002
 - **Order API**: http://localhost:8003
