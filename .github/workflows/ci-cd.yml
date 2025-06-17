@@ -201,8 +201,8 @@ jobs:
           docker exec PTK-api-customers bash -c '
             echo "Updating package list..."
             apt-get update -qq
-            echo "Installing mysql-client..."
-            DEBIAN_FRONTEND=noninteractive apt-get install -y mysql-client
+            echo "Installing default-mysql-client..."
+            DEBIAN_FRONTEND=noninteractive apt-get install -y default-mysql-client
             echo "Verifying installation..."
             which mysql && mysql --version
           ' || echo "❌ MySQL client installation failed in customers"
@@ -211,8 +211,8 @@ jobs:
           docker exec PTK-api-products bash -c '
             echo "Updating package list..."
             apt-get update -qq
-            echo "Installing mysql-client..."
-            DEBIAN_FRONTEND=noninteractive apt-get install -y mysql-client
+            echo "Installing default-mysql-client..."
+            DEBIAN_FRONTEND=noninteractive apt-get install -y default-mysql-client
             echo "Verifying installation..."
             which mysql && mysql --version
           ' || echo "❌ MySQL client installation failed in products"
@@ -221,8 +221,8 @@ jobs:
           docker exec PTK-api-orders bash -c '
             echo "Updating package list..."
             apt-get update -qq
-            echo "Installing mysql-client..."
-            DEBIAN_FRONTEND=noninteractive apt-get install -y mysql-client
+            echo "Installing default-mysql-client..."
+            DEBIAN_FRONTEND=noninteractive apt-get install -y default-mysql-client
             echo "Verifying installation..."
             which mysql && mysql --version
           ' || echo "❌ MySQL client installation failed in orders"
@@ -231,6 +231,115 @@ jobs:
           docker exec PTK-api-customers which mysql || echo "❌ MySQL not found in customers"
           docker exec PTK-api-products which mysql || echo "❌ MySQL not found in products"
           docker exec PTK-api-orders which mysql || echo "❌ MySQL not found in orders"
+
+      - name: Create Laravel .env files
+        run: |
+          echo "📝 Creating .env files for Laravel applications..."
+          
+          # Create .env for customers
+          docker exec PTK-api-customers bash -c '
+            if [ -f artisan ]; then
+              cat > .env << "EOF"
+          APP_NAME=PayeTonKawa-Customers
+          APP_ENV=testing
+          APP_KEY=
+          APP_DEBUG=true
+          APP_URL=http://localhost:8001
+          
+          DB_CONNECTION=mysql
+          DB_HOST=host.docker.internal
+          DB_PORT=3306
+          DB_DATABASE=customers
+          DB_USERNAME=root
+          DB_PASSWORD=root
+          
+          CACHE_DRIVER=array
+          SESSION_DRIVER=array
+          QUEUE_CONNECTION=sync
+          
+          RABBITMQ_HOST=host.docker.internal
+          RABBITMQ_PORT=5672
+          RABBITMQ_USER=payetonkawa
+          RABBITMQ_PASSWORD=kawa2024!
+          RABBITMQ_VHOST=/
+          RABBITMQ_EXCHANGE=payetonkawa
+          RABBITMQ_QUEUE=customers
+          EOF
+              echo "✅ .env created for customers"
+            else
+              echo "No Laravel app in customers"
+            fi
+          '
+          
+          # Create .env for products
+          docker exec PTK-api-products bash -c '
+            if [ -f artisan ]; then
+              cat > .env << "EOF"
+          APP_NAME=PayeTonKawa-Products
+          APP_ENV=testing
+          APP_KEY=
+          APP_DEBUG=true
+          APP_URL=http://localhost:8002
+          
+          DB_CONNECTION=mysql
+          DB_HOST=host.docker.internal
+          DB_PORT=3307
+          DB_DATABASE=products
+          DB_USERNAME=root
+          DB_PASSWORD=root
+          
+          CACHE_DRIVER=array
+          SESSION_DRIVER=array
+          QUEUE_CONNECTION=sync
+          
+          RABBITMQ_HOST=host.docker.internal
+          RABBITMQ_PORT=5672
+          RABBITMQ_USER=payetonkawa
+          RABBITMQ_PASSWORD=kawa2024!
+          RABBITMQ_VHOST=/
+          RABBITMQ_EXCHANGE=payetonkawa
+          RABBITMQ_QUEUE=products
+          EOF
+              echo "✅ .env created for products"
+            else
+              echo "No Laravel app in products"
+            fi
+          '
+          
+          # Create .env for orders
+          docker exec PTK-api-orders bash -c '
+            if [ -f artisan ]; then
+              cat > .env << "EOF"
+          APP_NAME=PayeTonKawa-Orders
+          APP_ENV=testing
+          APP_KEY=
+          APP_DEBUG=true
+          APP_URL=http://localhost:8003
+          
+          DB_CONNECTION=mysql
+          DB_HOST=host.docker.internal
+          DB_PORT=3308
+          DB_DATABASE=orders
+          DB_USERNAME=root
+          DB_PASSWORD=root
+          
+          CACHE_DRIVER=array
+          SESSION_DRIVER=array
+          QUEUE_CONNECTION=sync
+          
+          RABBITMQ_HOST=host.docker.internal
+          RABBITMQ_PORT=5672
+          RABBITMQ_USER=payetonkawa
+          RABBITMQ_PASSWORD=kawa2024!
+          RABBITMQ_VHOST=/
+          RABBITMQ_EXCHANGE=payetonkawa
+          RABBITMQ_QUEUE=orders
+          EOF
+              echo "✅ .env created for orders"
+            else
+              echo "No Laravel app in orders"
+            fi
+          '
 
       - name: Generate Laravel APP_KEY
         run: |
