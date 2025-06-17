@@ -193,6 +193,15 @@ jobs:
           docker exec PTK-api-products bash -c 'if [ -f composer.json ]; then composer install --no-dev --optimize-autoloader --no-interaction; fi' || echo "No composer.json in products"
           docker exec PTK-api-orders bash -c 'if [ -f composer.json ]; then composer install --no-dev --optimize-autoloader --no-interaction; fi' || echo "No composer.json in orders"
 
+      - name: Install MySQL client in containers
+        run: |
+          echo "🗄️ Installing MySQL client in containers..."
+          
+          # Install mysql-client for database connection testing
+          docker exec PTK-api-customers bash -c 'apt-get update && apt-get install -y mysql-client' || echo "MySQL client installation failed in customers"
+          docker exec PTK-api-products bash -c 'apt-get update && apt-get install -y mysql-client' || echo "MySQL client installation failed in products"
+          docker exec PTK-api-orders bash -c 'apt-get update && apt-get install -y mysql-client' || echo "MySQL client installation failed in orders"
+
       - name: Generate Laravel APP_KEY
         run: |
           echo "🔑 Generating Laravel APP_KEY for each service..."
@@ -240,7 +249,7 @@ jobs:
           docker exec PTK-api-orders bash -c 'if [ -f vendor/bin/phpunit ] && [ -d tests ]; then vendor/bin/phpunit --no-coverage; else echo "No tests to run in orders"; fi' || echo "Orders tests completed"
 
       - name: SonarCloud Scan
-        uses: SonarSource/sonarcloud-github-action@master
+        uses: SonarSource/sonarqube-scan-action@v5
         with:
           args: >
             -Dsonar.projectKey=${{ github.repository_owner }}_PayeTonKawa
