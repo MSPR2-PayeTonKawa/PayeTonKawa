@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-.PHONY: up down restart build ps logs migrate migrate-fresh seed install update swagger clean help start-all setup listeners stop-listeners migrate-reset rabbitmq-status test-rabbitmq test-connections
+.PHONY: up down restart build ps logs migrate migrate-fresh seed install update swagger clean help start-all setup listeners stop-listeners migrate-reset rabbitmq-status test-rabbitmq test-connections install-coverage test-coverage
 
 up:
 	docker compose up -d
@@ -200,4 +200,20 @@ help:
 	@echo "  make swagger          - Install and generate Swagger documentation"
 	@echo "  make clean            - Remove all containers and volumes"
 	@echo "  make fix-permissions  - Fix storage and cache permissions"
-	@echo "  make cache-clear      - Clear all caches" 
+	@echo "  make cache-clear      - Clear all caches"
+	@echo "  make install-coverage - Install Xdebug for code coverage"
+	@echo "  make test-coverage    - Run tests with coverage reports"
+
+install-coverage:
+	@echo "🧬 Installing Xdebug for code coverage..."
+	./install-coverage.sh
+
+test-coverage:
+	@echo "🧪 Running tests with coverage reports..."
+	docker exec PTK-api-customers vendor/bin/phpunit --coverage-clover=coverage-customers.xml
+	docker exec PTK-api-products vendor/bin/phpunit --coverage-clover=coverage-products.xml
+	docker exec PTK-api-orders vendor/bin/phpunit --coverage-clover=coverage-orders.xml
+	@echo "📊 Coverage reports generated:"
+	@echo "  - coverage-customers.xml"
+	@echo "  - coverage-products.xml" 
+	@echo "  - coverage-orders.xml" 
