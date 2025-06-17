@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-.PHONY: up down restart build ps logs migrate migrate-fresh seed install update swagger clean help
+.PHONY: up down restart build ps logs migrate migrate-fresh seed install update swagger clean help start-all setup listeners stop-listeners migrate-reset
 
 up:
 	docker compose up -d
@@ -19,10 +19,17 @@ ps:
 logs:
 	docker compose logs -f
 
+migrate-reset:
+	@echo "🗑️ Resetting all databases and migrations..."
+	docker exec PTK-api-customers php artisan migrate:fresh --force
+	docker exec PTK-api-products php artisan migrate:fresh --force
+	docker exec PTK-api-orders php artisan migrate:fresh --force
+
 migrate:
-	docker exec PTK-api-customers php artisan migrate
-	docker exec PTK-api-products php artisan migrate
-	docker exec PTK-api-orders php artisan migrate
+	@echo "🗄️ Running migrations for all services..."
+	docker exec PTK-api-customers php artisan migrate --force
+	docker exec PTK-api-products php artisan migrate --force
+	docker exec PTK-api-orders php artisan migrate --force
 
 migrate-fresh:
 	docker exec PTK-api-customers php artisan migrate:fresh --seed
@@ -35,9 +42,22 @@ seed:
 	docker exec PTK-api-orders php artisan db:seed
 
 install:
-	docker exec PTK-api-customers composer install
-	docker exec PTK-api-products composer install
-	docker exec PTK-api-orders composer install
+	@echo "🔧 Fixing Git ownership and installing dependencies..."
+	docker exec PTK-api-customers git config --global --add safe.directory /var/www/html
+	docker exec PTK-api-products git config --global --add safe.directory /var/www/html
+	docker exec PTK-api-orders git config --global --add safe.directory /var/www/html
+	@echo "🧹 Clearing Composer cache..."
+	docker exec PTK-api-customers composer clear-cache
+	docker exec PTK-api-products composer clear-cache
+	docker exec PTK-api-orders composer clear-cache
+	@echo "📦 Installing RabbitMQ dependencies..."
+	docker exec PTK-api-customers composer require php-amqplib/php-amqplib --quiet
+	docker exec PTK-api-products composer require php-amqplib/php-amqplib --quiet
+	docker exec PTK-api-orders composer require php-amqplib/php-amqplib --quiet
+	@echo "🚀 Installing all dependencies..."
+	docker exec PTK-api-customers composer install --no-dev --optimize-autoloader
+	docker exec PTK-api-products composer install --no-dev --optimize-autoloader
+	docker exec PTK-api-orders composer install --no-dev --optimize-autoloader
 
 update:
 	docker exec PTK-api-customers composer update
@@ -77,8 +97,38 @@ cache-clear:
 	docker exec PTK-api-products php artisan route:clear
 	docker exec PTK-api-orders php artisan route:clear
 
+start-all: up install migrate-reset listeners
+	@echo "✅ All microservices are now running!"
+	@echo "🔗 Access points:"
+	@echo "  - Customers API: http://localhost:8001/api/test"
+	@echo "  - Products API: http://localhost:8002/api/test"
+	@echo "  - Orders API: http://localhost:8003/api/test"
+	@echo "  - RabbitMQ Management: http://localhost:15672 (payetonkawa / kawa2024!)"
+
+setup: build start-all fix-permissions cache-clear
+	@echo "🚀 Complete setup finished!"
+
+listeners:
+	@echo "🐰 Starting RabbitMQ listeners for all services..."
+	docker exec -d PTK-api-customers php artisan events:listen
+	docker exec -d PTK-api-products php artisan events:listen  
+	docker exec -d PTK-api-orders php artisan events:listen
+	@echo "✅ All listeners are now running in background"
+
+stop-listeners:
+	@echo "🛑 Stopping RabbitMQ listeners..."
+	docker exec PTK-api-customers pkill -f "artisan events:listen" || true
+	docker exec PTK-api-products pkill -f "artisan events:listen" || true
+	docker exec PTK-api-orders pkill -f "artisan events:listen" || true
+	@echo "✅ All listeners stopped"
+
 help:
 	@echo "Available commands:"
+	@echo "  make start-all        - Start all containers, install deps, migrate and start listeners"
+	@echo "  make setup            - Complete setup (build + start-all + permissions + cache)"
+	@echo "  make listeners        - Start RabbitMQ event listeners for all services"
+	@echo "  make stop-listeners   - Stop all RabbitMQ event listeners"
+	@echo "  make migrate-reset    - Reset all databases and re-run migrations"
 	@echo "  make up               - Start all containers"
 	@echo "  make down             - Stop all containers"
 	@echo "  make restart          - Restart all containers"
