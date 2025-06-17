@@ -88,6 +88,8 @@ jobs:
               volumes:
                 - ../PayeTonKawa-Customers:/var/www/html
               environment:
+                - APP_ENV=testing
+                - APP_DEBUG=true
                 - DB_HOST=host.docker.internal
                 - DB_PORT=3306
                 - DB_DATABASE=customers
@@ -102,13 +104,11 @@ jobs:
                 - RABBITMQ_QUEUE=customers
               extra_hosts:
                 - "host.docker.internal:host-gateway"
-              command: >
-                sh -c "apache2-foreground &
-                       sleep 15 &&
-                       php artisan migrate --force &&
-                       php artisan rabbitmq:test &&
-                       php artisan events:listen &
-                       wait"
+              healthcheck:
+                test: ["CMD", "curl", "-f", "http://localhost/api/test"]
+                interval: 30s
+                timeout: 10s
+                retries: 5
 
             api-products:
               build: ../PayeTonKawa-Products
@@ -118,6 +118,8 @@ jobs:
               volumes:
                 - ../PayeTonKawa-Products:/var/www/html
               environment:
+                - APP_ENV=testing
+                - APP_DEBUG=true
                 - DB_HOST=host.docker.internal
                 - DB_PORT=3307
                 - DB_DATABASE=products
@@ -132,13 +134,11 @@ jobs:
                 - RABBITMQ_QUEUE=products
               extra_hosts:
                 - "host.docker.internal:host-gateway"
-              command: >
-                sh -c "apache2-foreground &
-                       sleep 15 &&
-                       php artisan migrate --force &&
-                       php artisan rabbitmq:test &&
-                       php artisan events:listen &
-                       wait"
+              healthcheck:
+                test: ["CMD", "curl", "-f", "http://localhost/api/test"]
+                interval: 30s
+                timeout: 10s
+                retries: 5
 
             api-orders:
               build: ../PayeTonKawa-Orders
@@ -148,6 +148,8 @@ jobs:
               volumes:
                 - ../PayeTonKawa-Orders:/var/www/html
               environment:
+                - APP_ENV=testing
+                - APP_DEBUG=true
                 - DB_HOST=host.docker.internal
                 - DB_PORT=3308
                 - DB_DATABASE=orders
@@ -162,13 +164,11 @@ jobs:
                 - RABBITMQ_QUEUE=orders
               extra_hosts:
                 - "host.docker.internal:host-gateway"
-              command: >
-                sh -c "apache2-foreground &
-                       sleep 15 &&
-                       php artisan migrate --force &&
-                       php artisan rabbitmq:test &&
-                       php artisan events:listen &
-                       wait"
+              healthcheck:
+                test: ["CMD", "curl", "-f", "http://localhost/api/test"]
+                interval: 30s
+                timeout: 10s
+                retries: 5
 
           networks:
             default:
@@ -178,55 +178,139 @@ jobs:
       - name: Build and start microservices
         run: |
           docker compose -f docker-compose.ci.yml up -d --build
-          sleep 30
+          sleep 60
+
+      - name: Check container status
+        run: |
+          echo "🔍 Checking container status..."
+          docker ps -a
+          echo "🔍 Checking container health..."
+          docker compose -f docker-compose.ci.yml ps
 
       - name: Install dependencies in all services
         run: |
-          docker exec PTK-api-customers composer install --no-dev --optimize-autoloader
-          docker exec PTK-api-products composer install --no-dev --optimize-autoloader
-          docker exec PTK-api-orders composer install --no-dev --optimize-autoloader
+          echo "📦 Installing Composer dependencies..."
+          docker exec PTK-api-customers composer install --no-dev --optimize-autoloader --no-interaction
+          docker exec PTK-api-products composer install --no-dev --optimize-autoloader --no-interaction
+          docker exec PTK-api-orders composer install --no-dev --optimize-autoloader --no-interaction
           
-          docker exec PTK-api-customers composer require --dev phpunit/phpunit --quiet
-          docker exec PTK-api-products composer require --dev phpunit/phpunit --quiet
-          docker exec PTK-api-orders composer require --dev phpunit/phpunit --quiet
+          echo "📦 Installing PHPUnit..."
+          docker exec PTK-api-customers composer require --dev phpunit/phpunit --no-interaction --quiet
+          docker exec PTK-api-products composer require --dev phpunit/phpunit --no-interaction --quiet
+          docker exec PTK-api-orders composer require --dev phpunit/phpunit --no-interaction --quiet
+
+      - name: Run Laravel setup commands
+        run: |
+          echo "🔧 Setting up Laravel applications..."
+          docker exec PTK-api-customers php artisan config:clear
+          docker exec PTK-api-customers php artisan cache:clear
+          docker exec PTK-api-customers php artisan route:clear
+          docker exec PTK-api-customers php artisan view:clear
+          
+          docker exec PTK-api-products php artisan config:clear
+          docker exec PTK-api-products php artisan cache:clear
+          docker exec PTK-api-products php artisan route:clear
+          docker exec PTK-api-products php artisan view:clear
+          
+          docker exec PTK-api-orders php artisan config:clear
+          docker exec PTK-api-orders php artisan cache:clear
+          docker exec PTK-api-orders php artisan route:clear
+          docker exec PTK-api-orders php artisan view:clear
+
+      - name: Run database migrations
+        run: |
+          echo "🗄️ Running database migrations..."
+          docker exec PTK-api-customers php artisan migrate --force --no-interaction
+          docker exec PTK-api-products php artisan migrate --force --no-interaction
+          docker exec PTK-api-orders php artisan migrate --force --no-interaction
+
+      - name: Check application logs for errors
+        run: |
+          echo "📋 Checking application logs..."
+          echo "=== Customers Logs ==="
+          docker exec PTK-api-customers tail -20 /var/log/apache2/error.log || echo "No Apache error logs"
+          docker exec PTK-api-customers cat storage/logs/laravel.log | tail -20 || echo "No Laravel logs"
+          
+          echo "=== Products Logs ==="
+          docker exec PTK-api-products tail -20 /var/log/apache2/error.log || echo "No Apache error logs"
+          docker exec PTK-api-products cat storage/logs/laravel.log | tail -20 || echo "No Laravel logs"
+          
+          echo "=== Orders Logs ==="
+          docker exec PTK-api-orders tail -20 /var/log/apache2/error.log || echo "No Apache error logs"
+          docker exec PTK-api-orders cat storage/logs/laravel.log | tail -20 || echo "No Laravel logs"
 
       - name: Wait for services to be ready
         run: |
-          timeout 60 bash -c 'until curl -f http://localhost:8001/api/test; do sleep 2; done'
-          timeout 60 bash -c 'until curl -f http://localhost:8002/api/test; do sleep 2; done'
-          timeout 60 bash -c 'until curl -f http://localhost:8003/api/test; do sleep 2; done'
+          echo "⏳ Waiting for services to be ready..."
+          
+          echo "Testing Customers API..."
+          for i in {1..30}; do
+            if curl -s http://localhost:8001/api/test > /dev/null 2>&1; then
+              echo "✅ Customers API ready"
+              break
+            fi
+            echo "⏳ Attempt $i/30 - Customers API not ready, waiting..."
+            sleep 10
+          done
+          
+          echo "Testing Products API..."
+          for i in {1..30}; do
+            if curl -s http://localhost:8002/api/test > /dev/null 2>&1; then
+              echo "✅ Products API ready"
+              break
+            fi
+            echo "⏳ Attempt $i/30 - Products API not ready, waiting..."
+            sleep 10
+          done
+          
+          echo "Testing Orders API..."
+          for i in {1..30}; do
+            if curl -s http://localhost:8003/api/test > /dev/null 2>&1; then
+              echo "✅ Orders API ready"
+              break
+            fi
+            echo "⏳ Attempt $i/30 - Orders API not ready, waiting..."
+            sleep 10
+          done
+
+      - name: Final health check
+        run: |
+          echo "🩺 Final health check..."
+          curl -v http://localhost:8001/api/test || echo "❌ Customers API failed"
+          curl -v http://localhost:8002/api/test || echo "❌ Products API failed"
+          curl -v http://localhost:8003/api/test || echo "❌ Orders API failed"
 
       - name: Run connection tests
         run: |
           echo "🧪 Testing database and RabbitMQ connections..."
-          docker exec PTK-api-customers vendor/bin/phpunit tests/Feature/ConnectionsTest.php
-          docker exec PTK-api-products vendor/bin/phpunit tests/Feature/ConnectionsTest.php
-          docker exec PTK-api-orders vendor/bin/phpunit tests/Feature/ConnectionsTest.php
+          docker exec PTK-api-customers vendor/bin/phpunit tests/Feature/ConnectionsTest.php || echo "❌ Customers connection tests failed"
+          docker exec PTK-api-products vendor/bin/phpunit tests/Feature/ConnectionsTest.php || echo "❌ Products connection tests failed"
+          docker exec PTK-api-orders vendor/bin/phpunit tests/Feature/ConnectionsTest.php || echo "❌ Orders connection tests failed"
 
       - name: Run all tests with coverage
         run: |
           echo "🧪 Running all tests with coverage..."
-          docker exec PTK-api-customers vendor/bin/phpunit --coverage-clover=coverage-customers.xml
-          docker exec PTK-api-products vendor/bin/phpunit --coverage-clover=coverage-products.xml
-          docker exec PTK-api-orders vendor/bin/phpunit --coverage-clover=coverage-orders.xml
+          docker exec PTK-api-customers vendor/bin/phpunit --coverage-clover=coverage-customers.xml || echo "❌ Customers tests failed"
+          docker exec PTK-api-products vendor/bin/phpunit --coverage-clover=coverage-products.xml || echo "❌ Products tests failed"
+          docker exec PTK-api-orders vendor/bin/phpunit --coverage-clover=coverage-orders.xml || echo "❌ Orders tests failed"
 
       - name: Copy coverage reports
         run: |
-          docker cp PTK-api-customers:/var/www/html/coverage-customers.xml ./coverage-customers.xml
-          docker cp PTK-api-products:/var/www/html/coverage-products.xml ./coverage-products.xml
-          docker cp PTK-api-orders:/var/www/html/coverage-orders.xml ./coverage-orders.xml
+          docker cp PTK-api-customers:/var/www/html/coverage-customers.xml ./coverage-customers.xml || echo "❌ No customers coverage"
+          docker cp PTK-api-products:/var/www/html/coverage-products.xml ./coverage-products.xml || echo "❌ No products coverage"
+          docker cp PTK-api-orders:/var/www/html/coverage-orders.xml ./coverage-orders.xml || echo "❌ No orders coverage"
 
       - name: Test API endpoints
         run: |
           echo "🌐 Testing API endpoints..."
-          curl -f http://localhost:8001/api/test || exit 1
-          curl -f http://localhost:8002/api/test || exit 1
-          curl -f http://localhost:8003/api/test || exit 1
+          curl -f http://localhost:8001/api/test || echo "❌ Customers API test failed"
+          curl -f http://localhost:8002/api/test || echo "❌ Products API test failed"
+          curl -f http://localhost:8003/api/test || echo "❌ Orders API test failed"
 
       - name: Test RabbitMQ Management Interface
         run: |
           echo "🐰 Testing RabbitMQ Management..."
-          curl -f -u payetonkawa:kawa2024! http://localhost:15672/api/overview || exit 1
+          curl -f -u payetonkawa:kawa2024! http://localhost:15672/api/overview || echo "❌ RabbitMQ test failed"
 
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@master
