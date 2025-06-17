@@ -177,7 +177,7 @@ jobs:
 
       - name: Build and start microservices
         run: |
-          docker-compose -f docker-compose.ci.yml up -d --build
+          docker compose -f docker-compose.ci.yml up -d --build
           sleep 30
 
       - name: Install dependencies in all services
@@ -244,12 +244,12 @@ jobs:
         if: failure()
         run: |
           echo "📋 Container logs:"
-          docker-compose -f docker-compose.ci.yml logs
+          docker compose -f docker-compose.ci.yml logs
 
       - name: Cleanup
         if: always()
         run: |
-          docker-compose -f docker-compose.ci.yml down -v
+          docker compose -f docker-compose.ci.yml down -v
           docker system prune -f
 
   deploy-production:
@@ -297,8 +297,8 @@ jobs:
             fi
             
             echo "🐳 Restarting Docker containers..."
-            sudo docker-compose down
-            sudo docker-compose up -d
+            sudo docker compose down
+            sudo docker compose up -d
             
             echo "⏳ Waiting for services to be ready..."
             sleep 30
