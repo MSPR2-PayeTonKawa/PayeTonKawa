@@ -398,14 +398,10 @@ jobs:
           docker exec PTK-api-orders bash -c 'if [ -f vendor/bin/phpunit ] && [ -d tests ]; then vendor/bin/phpunit --no-coverage; else echo "No tests to run in orders"; fi' || echo "Orders tests completed"
 
       - name: SonarCloud Scan
-        uses: SonarSource/sonarqube-scan-action@v5
-        with:
-          args: >
-            -Dsonar.projectKey=PayeTonKawa
-            -Dsonar.organization=42msprpayetonkawa2025
-            -Dsonar.sources=.
-            -Dsonar.exclusions=vendor/**,node_modules/**,storage/**,bootstrap/cache/**,docker-compose.ci.yml
-            -Dsonar.sourceEncoding=UTF-8
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
       - name: Show container logs on failure
         if: failure()
