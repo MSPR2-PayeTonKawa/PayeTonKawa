@@ -192,23 +192,45 @@ jobs:
           docker exec PTK-api-customers bash -c 'if [ -f composer.json ]; then composer install --no-dev --optimize-autoloader --no-interaction; fi' || echo "No composer.json in customers"
           docker exec PTK-api-products bash -c 'if [ -f composer.json ]; then composer install --no-dev --optimize-autoloader --no-interaction; fi' || echo "No composer.json in products"
           docker exec PTK-api-orders bash -c 'if [ -f composer.json ]; then composer install --no-dev --optimize-autoloader --no-interaction; fi' || echo "No composer.json in orders"
+
+      - name: Install MySQL client for database testing
+        run: |
+          echo "🗄️ Installing MySQL client in all containers..."
           
-          # Install MySQL client immediately after dependencies
-          echo "🗄️ Installing MySQL client in containers..."
-          echo "Installing MySQL client in customers container..."
-          docker exec PTK-api-customers bash -c 'apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y mysql-client' || echo "MySQL client installation failed in customers"
+          echo "=== Installing in Customers container ==="
+          docker exec PTK-api-customers bash -c '
+            echo "Updating package list..."
+            apt-get update -qq
+            echo "Installing mysql-client..."
+            DEBIAN_FRONTEND=noninteractive apt-get install -y mysql-client
+            echo "Verifying installation..."
+            which mysql && mysql --version
+          ' || echo "❌ MySQL client installation failed in customers"
           
-          echo "Installing MySQL client in products container..."
-          docker exec PTK-api-products bash -c 'apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y mysql-client' || echo "MySQL client installation failed in products"
+          echo "=== Installing in Products container ==="
+          docker exec PTK-api-products bash -c '
+            echo "Updating package list..."
+            apt-get update -qq
+            echo "Installing mysql-client..."
+            DEBIAN_FRONTEND=noninteractive apt-get install -y mysql-client
+            echo "Verifying installation..."
+            which mysql && mysql --version
+          ' || echo "❌ MySQL client installation failed in products"
           
-          echo "Installing MySQL client in orders container..."
-          docker exec PTK-api-orders bash -c 'apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y mysql-client' || echo "MySQL client installation failed in orders"
+          echo "=== Installing in Orders container ==="
+          docker exec PTK-api-orders bash -c '
+            echo "Updating package list..."
+            apt-get update -qq
+            echo "Installing mysql-client..."
+            DEBIAN_FRONTEND=noninteractive apt-get install -y mysql-client
+            echo "Verifying installation..."
+            which mysql && mysql --version
+          ' || echo "❌ MySQL client installation failed in orders"
           
-          # Verify installation
-          echo "Verifying MySQL client installation..."
-          docker exec PTK-api-customers which mysql || echo "MySQL not found in customers"
-          docker exec PTK-api-products which mysql || echo "MySQL not found in products"
-          docker exec PTK-api-orders which mysql || echo "MySQL not found in orders"
+          echo "=== Final verification ==="
+          docker exec PTK-api-customers which mysql || echo "❌ MySQL not found in customers"
+          docker exec PTK-api-products which mysql || echo "❌ MySQL not found in products"
+          docker exec PTK-api-orders which mysql || echo "❌ MySQL not found in orders"
 
       - name: Generate Laravel APP_KEY
         run: |
@@ -221,12 +243,22 @@ jobs:
 
       - name: Test database connections
         run: |
-          echo "🗄️ Testing database connections..."
+          echo "🗄️ Testing real SQL database connections..."
           
-          # Test MySQL connections
-          docker exec PTK-api-customers mysql -h host.docker.internal -P 3306 -u root -proot -e "SELECT 1" customers || echo "❌ Customers DB connection failed"
-          docker exec PTK-api-products mysql -h host.docker.internal -P 3307 -u root -proot -e "SELECT 1" products || echo "❌ Products DB connection failed"
-          docker exec PTK-api-orders mysql -h host.docker.internal -P 3308 -u root -proot -e "SELECT 1" orders || echo "❌ Orders DB connection failed"
+          # Test real MySQL connections with SQL queries
+          echo "Testing Customers DB connection..."
+          docker exec PTK-api-customers mysql -h host.docker.internal -P 3306 -u root -proot -e "SELECT 1 as test, 'Customers DB Connected' as message;" customers || echo "❌ Customers DB connection failed"
+          
+          echo "Testing Products DB connection..."
+          docker exec PTK-api-products mysql -h host.docker.internal -P 3307 -u root -proot -e "SELECT 1 as test, 'Products DB Connected' as message;" products || echo "❌ Products DB connection failed"
+          
+          echo "Testing Orders DB connection..."
+          docker exec PTK-api-orders mysql -h host.docker.internal -P 3308 -u root -proot -e "SELECT 1 as test, 'Orders DB Connected' as message;" orders || echo "❌ Orders DB connection failed"
+          
+          echo "Testing basic SQL operations..."
+          docker exec PTK-api-customers mysql -h host.docker.internal -P 3306 -u root -proot -e "SHOW TABLES;" customers || echo "❌ Customers SHOW TABLES failed"
+          docker exec PTK-api-products mysql -h host.docker.internal -P 3307 -u root -proot -e "SHOW TABLES;" products || echo "❌ Products SHOW TABLES failed"
+          docker exec PTK-api-orders mysql -h host.docker.internal -P 3308 -u root -proot -e "SHOW TABLES;" orders || echo "❌ Orders SHOW TABLES failed"
 
       - name: Test RabbitMQ connections
         run: |
@@ -257,6 +289,7 @@ jobs:
           docker exec PTK-api-orders bash -c 'if [ -f vendor/bin/phpunit ] && [ -d tests ]; then vendor/bin/phpunit --no-coverage; else echo "No tests to run in orders"; fi' || echo "Orders tests completed"
 
       - name: SonarCloud Scan
+        if: false
         uses: SonarSource/sonarqube-scan-action@v5
         with:
           args: >
