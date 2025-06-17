@@ -90,11 +90,16 @@ jobs:
               environment:
                 - APP_ENV=testing
                 - APP_DEBUG=true
+                - APP_KEY=base64:YourBase64EncodedAppKeyHere123456789
+                - DB_CONNECTION=mysql
                 - DB_HOST=host.docker.internal
                 - DB_PORT=3306
                 - DB_DATABASE=customers
                 - DB_USERNAME=root
                 - DB_PASSWORD=root
+                - CACHE_DRIVER=array
+                - SESSION_DRIVER=array
+                - QUEUE_CONNECTION=sync
                 - RABBITMQ_HOST=host.docker.internal
                 - RABBITMQ_PORT=5672
                 - RABBITMQ_USER=payetonkawa
@@ -104,11 +109,6 @@ jobs:
                 - RABBITMQ_QUEUE=customers
               extra_hosts:
                 - "host.docker.internal:host-gateway"
-              healthcheck:
-                test: ["CMD", "curl", "-f", "http://localhost/api/test"]
-                interval: 30s
-                timeout: 10s
-                retries: 5
 
             api-products:
               build: ../PayeTonKawa-Products
@@ -120,11 +120,16 @@ jobs:
               environment:
                 - APP_ENV=testing
                 - APP_DEBUG=true
+                - APP_KEY=base64:YourBase64EncodedAppKeyHere123456789
+                - DB_CONNECTION=mysql
                 - DB_HOST=host.docker.internal
                 - DB_PORT=3307
                 - DB_DATABASE=products
                 - DB_USERNAME=root
                 - DB_PASSWORD=root
+                - CACHE_DRIVER=array
+                - SESSION_DRIVER=array
+                - QUEUE_CONNECTION=sync
                 - RABBITMQ_HOST=host.docker.internal
                 - RABBITMQ_PORT=5672
                 - RABBITMQ_USER=payetonkawa
@@ -134,11 +139,6 @@ jobs:
                 - RABBITMQ_QUEUE=products
               extra_hosts:
                 - "host.docker.internal:host-gateway"
-              healthcheck:
-                test: ["CMD", "curl", "-f", "http://localhost/api/test"]
-                interval: 30s
-                timeout: 10s
-                retries: 5
 
             api-orders:
               build: ../PayeTonKawa-Orders
@@ -150,11 +150,16 @@ jobs:
               environment:
                 - APP_ENV=testing
                 - APP_DEBUG=true
+                - APP_KEY=base64:YourBase64EncodedAppKeyHere123456789
+                - DB_CONNECTION=mysql
                 - DB_HOST=host.docker.internal
                 - DB_PORT=3308
                 - DB_DATABASE=orders
                 - DB_USERNAME=root
                 - DB_PASSWORD=root
+                - CACHE_DRIVER=array
+                - SESSION_DRIVER=array
+                - QUEUE_CONNECTION=sync
                 - RABBITMQ_HOST=host.docker.internal
                 - RABBITMQ_PORT=5672
                 - RABBITMQ_USER=payetonkawa
@@ -164,11 +169,6 @@ jobs:
                 - RABBITMQ_QUEUE=orders
               extra_hosts:
                 - "host.docker.internal:host-gateway"
-              healthcheck:
-                test: ["CMD", "curl", "-f", "http://localhost/api/test"]
-                interval: 30s
-                timeout: 10s
-                retries: 5
 
           networks:
             default:
@@ -178,114 +178,63 @@ jobs:
       - name: Build and start microservices
         run: |
           docker compose -f docker-compose.ci.yml up -d --build
-          sleep 60
+          sleep 45
 
-      - name: Check container status
+      - name: Install dependencies and setup Laravel
         run: |
-          echo "🔍 Checking container status..."
-          docker ps -a
-          echo "🔍 Checking container health..."
-          docker compose -f docker-compose.ci.yml ps
-
-      - name: Install dependencies in all services
-        run: |
-          echo "📦 Installing Composer dependencies..."
-          docker exec PTK-api-customers composer install --no-dev --optimize-autoloader --no-interaction
-          docker exec PTK-api-products composer install --no-dev --optimize-autoloader --no-interaction
-          docker exec PTK-api-orders composer install --no-dev --optimize-autoloader --no-interaction
+          echo "📦 Installing Composer dependencies and setting up Laravel..."
           
-          echo "📦 Installing PHPUnit..."
-          docker exec PTK-api-customers composer require --dev phpunit/phpunit --no-interaction --quiet
-          docker exec PTK-api-products composer require --dev phpunit/phpunit --no-interaction --quiet
-          docker exec PTK-api-orders composer require --dev phpunit/phpunit --no-interaction --quiet
-
-      - name: Run Laravel setup commands
-        run: |
-          echo "🔧 Setting up Laravel applications..."
-          docker exec PTK-api-customers php artisan config:clear
-          docker exec PTK-api-customers php artisan cache:clear
-          docker exec PTK-api-customers php artisan route:clear
-          docker exec PTK-api-customers php artisan view:clear
+          # Install dependencies in parallel
+          docker exec PTK-api-customers composer install --no-dev --optimize-autoloader --no-interaction &
+          docker exec PTK-api-products composer install --no-dev --optimize-autoloader --no-interaction &
+          docker exec PTK-api-orders composer install --no-dev --optimize-autoloader --no-interaction &
+          wait
           
-          docker exec PTK-api-products php artisan config:clear
-          docker exec PTK-api-products php artisan cache:clear
-          docker exec PTK-api-products php artisan route:clear
-          docker exec PTK-api-products php artisan view:clear
+          # Install PHPUnit in parallel
+          docker exec PTK-api-customers composer require --dev phpunit/phpunit --no-interaction --quiet &
+          docker exec PTK-api-products composer require --dev phpunit/phpunit --no-interaction --quiet &
+          docker exec PTK-api-orders composer require --dev phpunit/phpunit --no-interaction --quiet &
+          wait
           
-          docker exec PTK-api-orders php artisan config:clear
-          docker exec PTK-api-orders php artisan cache:clear
-          docker exec PTK-api-orders php artisan route:clear
-          docker exec PTK-api-orders php artisan view:clear
-
-      - name: Run database migrations
-        run: |
-          echo "🗄️ Running database migrations..."
+          # Setup Laravel applications
           docker exec PTK-api-customers php artisan migrate --force --no-interaction
           docker exec PTK-api-products php artisan migrate --force --no-interaction
           docker exec PTK-api-orders php artisan migrate --force --no-interaction
-
-      - name: Check application logs for errors
-        run: |
-          echo "📋 Checking application logs..."
-          echo "=== Customers Logs ==="
-          docker exec PTK-api-customers tail -20 /var/log/apache2/error.log || echo "No Apache error logs"
-          docker exec PTK-api-customers cat storage/logs/laravel.log | tail -20 || echo "No Laravel logs"
-          
-          echo "=== Products Logs ==="
-          docker exec PTK-api-products tail -20 /var/log/apache2/error.log || echo "No Apache error logs"
-          docker exec PTK-api-products cat storage/logs/laravel.log | tail -20 || echo "No Laravel logs"
-          
-          echo "=== Orders Logs ==="
-          docker exec PTK-api-orders tail -20 /var/log/apache2/error.log || echo "No Apache error logs"
-          docker exec PTK-api-orders cat storage/logs/laravel.log | tail -20 || echo "No Laravel logs"
 
       - name: Wait for services to be ready
         run: |
           echo "⏳ Waiting for services to be ready..."
           
-          echo "Testing Customers API..."
-          for i in {1..30}; do
-            if curl -s http://localhost:8001/api/test > /dev/null 2>&1; then
-              echo "✅ Customers API ready"
-              break
-            fi
-            echo "⏳ Attempt $i/30 - Customers API not ready, waiting..."
-            sleep 10
-          done
+          # Function to test API
+          test_api() {
+            local url=$1
+            local name=$2
+            local max_attempts=20
+            
+            for i in $(seq 1 $max_attempts); do
+              if curl -s "$url" > /dev/null 2>&1; then
+                echo "✅ $name API ready"
+                return 0
+              fi
+              echo "⏳ Attempt $i/$max_attempts - $name API not ready, waiting..."
+              sleep 5
+            done
+            echo "❌ $name API failed to start"
+            return 1
+          }
           
-          echo "Testing Products API..."
-          for i in {1..30}; do
-            if curl -s http://localhost:8002/api/test > /dev/null 2>&1; then
-              echo "✅ Products API ready"
-              break
-            fi
-            echo "⏳ Attempt $i/30 - Products API not ready, waiting..."
-            sleep 10
-          done
-          
-          echo "Testing Orders API..."
-          for i in {1..30}; do
-            if curl -s http://localhost:8003/api/test > /dev/null 2>&1; then
-              echo "✅ Orders API ready"
-              break
-            fi
-            echo "⏳ Attempt $i/30 - Orders API not ready, waiting..."
-            sleep 10
-          done
-
-      - name: Final health check
-        run: |
-          echo "🩺 Final health check..."
-          curl -v http://localhost:8001/api/test || echo "❌ Customers API failed"
-          curl -v http://localhost:8002/api/test || echo "❌ Products API failed"
-          curl -v http://localhost:8003/api/test || echo "❌ Orders API failed"
+          # Test all APIs in parallel
+          test_api "http://localhost:8001/api/test" "Customers" &
+          test_api "http://localhost:8002/api/test" "Products" &
+          test_api "http://localhost:8003/api/test" "Orders" &
+          wait
 
       - name: Run connection tests
         run: |
           echo "🧪 Testing database and RabbitMQ connections..."
-          docker exec PTK-api-customers vendor/bin/phpunit tests/Feature/ConnectionsTest.php || echo "❌ Customers connection tests failed"
-          docker exec PTK-api-products vendor/bin/phpunit tests/Feature/ConnectionsTest.php || echo "❌ Products connection tests failed"
-          docker exec PTK-api-orders vendor/bin/phpunit tests/Feature/ConnectionsTest.php || echo "❌ Orders connection tests failed"
+          docker exec PTK-api-customers vendor/bin/phpunit tests/Feature/ConnectionsTest.php --no-coverage || echo "❌ Customers connection tests failed"
+          docker exec PTK-api-products vendor/bin/phpunit tests/Feature/ConnectionsTest.php --no-coverage || echo "❌ Products connection tests failed"
+          docker exec PTK-api-orders vendor/bin/phpunit tests/Feature/ConnectionsTest.php --no-coverage || echo "❌ Orders connection tests failed"
 
       - name: Run all tests with coverage
         run: |
