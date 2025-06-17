@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-.PHONY: up down restart build ps logs migrate migrate-fresh seed install update swagger clean help start-all setup listeners stop-listeners migrate-reset rabbitmq-status test-rabbitmq
+.PHONY: up down restart build ps logs migrate migrate-fresh seed install update swagger clean help start-all setup listeners stop-listeners migrate-reset rabbitmq-status test-rabbitmq test-connections
 
 up:
 	docker compose up -d
@@ -54,10 +54,14 @@ install:
 	docker exec PTK-api-customers composer require php-amqplib/php-amqplib --quiet
 	docker exec PTK-api-products composer require php-amqplib/php-amqplib --quiet
 	docker exec PTK-api-orders composer require php-amqplib/php-amqplib --quiet
+	@echo "🧪 Installing PHPUnit..."
+	docker exec PTK-api-customers composer require --dev phpunit/phpunit --quiet
+	docker exec PTK-api-products composer require --dev phpunit/phpunit --quiet
+	docker exec PTK-api-orders composer require --dev phpunit/phpunit --quiet
 	@echo "🚀 Installing all dependencies..."
-	docker exec PTK-api-customers composer install --no-dev --optimize-autoloader
-	docker exec PTK-api-products composer install --no-dev --optimize-autoloader
-	docker exec PTK-api-orders composer install --no-dev --optimize-autoloader
+	docker exec PTK-api-customers composer install --optimize-autoloader
+	docker exec PTK-api-products composer install --optimize-autoloader
+	docker exec PTK-api-orders composer install --optimize-autoloader
 
 update:
 	docker exec PTK-api-customers composer update
@@ -81,10 +85,31 @@ fix-permissions:
 	docker exec PTK-api-products chmod -R 775 storage bootstrap/cache
 	docker exec PTK-api-orders chmod -R 775 storage bootstrap/cache
 
+test-connections:
+	@echo "🧪 Testing connections for all microservices..."
+	@echo "📡 Testing Customers service connections:"
+	docker exec PTK-api-customers vendor/bin/phpunit tests/Feature/ConnectionsTest.php
+	@echo ""
+	@echo "📡 Testing Products service connections:"
+	docker exec PTK-api-products vendor/bin/phpunit tests/Feature/ConnectionsTest.php
+	@echo ""
+	@echo "📡 Testing Orders service connections:"
+	docker exec PTK-api-orders vendor/bin/phpunit tests/Feature/ConnectionsTest.php
+	@echo ""
+	@echo "✅ All connection tests completed!"
+
 test:
-	docker exec PTK-api-customers php artisan test
-	docker exec PTK-api-products php artisan test
-	docker exec PTK-api-orders php artisan test
+	@echo "🧪 Running all tests for all microservices..."
+	@echo "📡 Testing Customers service:"
+	docker exec PTK-api-customers vendor/bin/phpunit
+	@echo ""
+	@echo "📡 Testing Products service:"
+	docker exec PTK-api-products vendor/bin/phpunit
+	@echo ""
+	@echo "📡 Testing Orders service:"
+	docker exec PTK-api-orders vendor/bin/phpunit
+	@echo ""
+	@echo "✅ All tests completed!"
 
 cache-clear:
 	docker exec PTK-api-customers php artisan cache:clear
@@ -158,6 +183,8 @@ help:
 	@echo "  make stop-listeners   - Stop all RabbitMQ event listeners"
 	@echo "  make rabbitmq-status  - Check RabbitMQ status and connections"
 	@echo "  make test-rabbitmq    - Test RabbitMQ connections from all services"
+	@echo "  make test-connections - Test database and RabbitMQ connections for all services"
+	@echo "  make test             - Run all tests for all microservices"
 	@echo "  make migrate-reset    - Reset all databases and re-run migrations"
 	@echo "  make up               - Start all containers"
 	@echo "  make down             - Stop all containers"
@@ -173,5 +200,4 @@ help:
 	@echo "  make swagger          - Install and generate Swagger documentation"
 	@echo "  make clean            - Remove all containers and volumes"
 	@echo "  make fix-permissions  - Fix storage and cache permissions"
-	@echo "  make test             - Run tests for all services"
 	@echo "  make cache-clear      - Clear all caches" 
