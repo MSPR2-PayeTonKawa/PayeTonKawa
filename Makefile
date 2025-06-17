@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-.PHONY: up down restart build ps logs migrate migrate-fresh seed install update swagger clean help start-all setup listeners stop-listeners migrate-reset
+.PHONY: up down restart build ps logs migrate migrate-fresh seed install update swagger clean help start-all setup listeners stop-listeners migrate-reset rabbitmq-status test-rabbitmq
 
 up:
 	docker compose up -d
@@ -97,8 +97,9 @@ cache-clear:
 	docker exec PTK-api-products php artisan route:clear
 	docker exec PTK-api-orders php artisan route:clear
 
-start-all: up install migrate-reset listeners
+start-all: up install migrate-reset
 	@echo "✅ All microservices are now running!"
+	@echo "🐰 RabbitMQ listeners start automatically with each service"
 	@echo "🔗 Access points:"
 	@echo "  - Customers API: http://localhost:8001/api/test"
 	@echo "  - Products API: http://localhost:8002/api/test"
@@ -122,12 +123,41 @@ stop-listeners:
 	docker exec PTK-api-orders pkill -f "artisan events:listen" || true
 	@echo "✅ All listeners stopped"
 
+rabbitmq-status:
+	@echo "🐰 Checking RabbitMQ status and connections..."
+	@echo "📊 RabbitMQ Management Interface: http://localhost:15672"
+	@echo "🔌 Container status:"
+	docker exec PTK-MessageBroker rabbitmqctl list_connections
+	@echo "📋 Queues:"
+	docker exec PTK-MessageBroker rabbitmqctl list_queues
+	@echo "🔄 Exchanges:"
+	docker exec PTK-MessageBroker rabbitmqctl list_exchanges
+	@echo "👥 Users:"
+	docker exec PTK-MessageBroker rabbitmqctl list_users
+	@echo "📡 Checking if listeners are running:"
+	docker exec PTK-api-customers ps aux | grep "artisan events:listen" || echo "❌ No customers listener"
+	docker exec PTK-api-products ps aux | grep "artisan events:listen" || echo "❌ No products listener"
+	docker exec PTK-api-orders ps aux | grep "artisan events:listen" || echo "❌ No orders listener"
+
+test-rabbitmq:
+	@echo "🧪 Testing RabbitMQ connections from all services..."
+	@echo "📡 Testing Customers service:"
+	docker exec PTK-api-customers php artisan rabbitmq:test
+	@echo ""
+	@echo "📡 Testing Products service:"
+	docker exec PTK-api-products php artisan rabbitmq:test
+	@echo ""
+	@echo "📡 Testing Orders service:"
+	docker exec PTK-api-orders php artisan rabbitmq:test
+
 help:
 	@echo "Available commands:"
 	@echo "  make start-all        - Start all containers, install deps, migrate and start listeners"
 	@echo "  make setup            - Complete setup (build + start-all + permissions + cache)"
 	@echo "  make listeners        - Start RabbitMQ event listeners for all services"
 	@echo "  make stop-listeners   - Stop all RabbitMQ event listeners"
+	@echo "  make rabbitmq-status  - Check RabbitMQ status and connections"
+	@echo "  make test-rabbitmq    - Test RabbitMQ connections from all services"
 	@echo "  make migrate-reset    - Reset all databases and re-run migrations"
 	@echo "  make up               - Start all containers"
 	@echo "  make down             - Stop all containers"

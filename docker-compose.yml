@@ -9,11 +9,25 @@ services:
       - "8001:80"
     volumes:
       - ../PayeTonKawa-Customers:/var/www/html
+    environment:
+      - RABBITMQ_HOST=PTK-MessageBroker
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=payetonkawa
+      - RABBITMQ_PASSWORD=kawa2024!
+      - RABBITMQ_VHOST=/
+      - RABBITMQ_EXCHANGE=payetonkawa
+      - RABBITMQ_QUEUE=customers
     depends_on:
       - db-customers
       - rabbitmq
     networks:
       - ptk-net
+    command: >
+      sh -c "apache2-foreground &
+             sleep 10 &&
+             php artisan rabbitmq:test &&
+             php artisan events:listen &
+             wait"
 
   db-customers: 
     image: mysql:8
@@ -37,11 +51,25 @@ services:
       - "8002:80"
     volumes:
       - ../PayeTonKawa-Products:/var/www/html
+    environment:
+      - RABBITMQ_HOST=PTK-MessageBroker
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=payetonkawa
+      - RABBITMQ_PASSWORD=kawa2024!
+      - RABBITMQ_VHOST=/
+      - RABBITMQ_EXCHANGE=payetonkawa
+      - RABBITMQ_QUEUE=products
     depends_on:
       - db-products
       - rabbitmq
     networks:
       - ptk-net
+    command: >
+      sh -c "apache2-foreground &
+             sleep 10 &&
+             php artisan rabbitmq:test &&
+             php artisan events:listen &
+             wait"
 
   db-products:
     image: mysql:8
@@ -65,11 +93,25 @@ services:
       - "8003:80"
     volumes:
       - ../PayeTonKawa-Orders:/var/www/html
+    environment:
+      - RABBITMQ_HOST=PTK-MessageBroker
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=payetonkawa
+      - RABBITMQ_PASSWORD=kawa2024!
+      - RABBITMQ_VHOST=/
+      - RABBITMQ_EXCHANGE=payetonkawa
+      - RABBITMQ_QUEUE=orders
     depends_on:
       - db-orders
       - rabbitmq
     networks:
       - ptk-net
+    command: >
+      sh -c "apache2-foreground &
+             sleep 10 &&
+             php artisan rabbitmq:test &&
+             php artisan events:listen &
+             wait"
 
   db-orders:
     image: mysql:8
@@ -93,8 +135,8 @@ services:
       - "5672:5672"
       - "15672:15672"
     environment:
-      RABBITMQ_DEFAULT_USER: user
-      RABBITMQ_DEFAULT_PASS: pass
+      RABBITMQ_DEFAULT_USER: payetonkawa
+      RABBITMQ_DEFAULT_PASS: kawa2024!
     networks:
       - ptk-net
 
