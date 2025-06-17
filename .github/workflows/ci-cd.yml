@@ -198,9 +198,20 @@ jobs:
           echo "🗄️ Installing MySQL client in containers..."
           
           # Install mysql-client for database connection testing
-          docker exec PTK-api-customers bash -c 'apt-get update && apt-get install -y mysql-client' || echo "MySQL client installation failed in customers"
-          docker exec PTK-api-products bash -c 'apt-get update && apt-get install -y mysql-client' || echo "MySQL client installation failed in products"
-          docker exec PTK-api-orders bash -c 'apt-get update && apt-get install -y mysql-client' || echo "MySQL client installation failed in orders"
+          echo "Installing MySQL client in customers container..."
+          docker exec PTK-api-customers bash -c 'apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y mysql-client' || echo "MySQL client installation failed in customers"
+          
+          echo "Installing MySQL client in products container..."
+          docker exec PTK-api-products bash -c 'apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y mysql-client' || echo "MySQL client installation failed in products"
+          
+          echo "Installing MySQL client in orders container..."
+          docker exec PTK-api-orders bash -c 'apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y mysql-client' || echo "MySQL client installation failed in orders"
+          
+          # Verify installation
+          echo "Verifying MySQL client installation..."
+          docker exec PTK-api-customers which mysql || echo "MySQL not found in customers"
+          docker exec PTK-api-products which mysql || echo "MySQL not found in products"
+          docker exec PTK-api-orders which mysql || echo "MySQL not found in orders"
 
       - name: Generate Laravel APP_KEY
         run: |
@@ -253,7 +264,7 @@ jobs:
         with:
           args: >
             -Dsonar.projectKey=${{ github.repository_owner }}_PayeTonKawa
-            -Dsonar.organization=${{ github.repository_owner }}
+            -Dsonar.organization=42msprpayetonkawa2025
             -Dsonar.sources=.
             -Dsonar.exclusions=vendor/**,node_modules/**,storage/**,bootstrap/cache/**,docker-compose.ci.yml
             -Dsonar.sourceEncoding=UTF-8
