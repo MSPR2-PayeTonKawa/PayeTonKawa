@@ -192,12 +192,9 @@ jobs:
           docker exec PTK-api-customers bash -c 'if [ -f composer.json ]; then composer install --no-dev --optimize-autoloader --no-interaction; fi' || echo "No composer.json in customers"
           docker exec PTK-api-products bash -c 'if [ -f composer.json ]; then composer install --no-dev --optimize-autoloader --no-interaction; fi' || echo "No composer.json in products"
           docker exec PTK-api-orders bash -c 'if [ -f composer.json ]; then composer install --no-dev --optimize-autoloader --no-interaction; fi' || echo "No composer.json in orders"
-
-      - name: Install MySQL client in containers
-        run: |
-          echo "🗄️ Installing MySQL client in containers..."
           
-          # Install mysql-client for database connection testing
+          # Install MySQL client immediately after dependencies
+          echo "🗄️ Installing MySQL client in containers..."
           echo "Installing MySQL client in customers container..."
           docker exec PTK-api-customers bash -c 'apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y mysql-client' || echo "MySQL client installation failed in customers"
           
@@ -263,7 +260,7 @@ jobs:
         uses: SonarSource/sonarqube-scan-action@v5
         with:
           args: >
-            -Dsonar.projectKey=${{ github.repository_owner }}_PayeTonKawa
+            -Dsonar.projectKey=PayeTonKawa
             -Dsonar.organization=42msprpayetonkawa2025
             -Dsonar.sources=.
             -Dsonar.exclusions=vendor/**,node_modules/**,storage/**,bootstrap/cache/**,docker-compose.ci.yml
